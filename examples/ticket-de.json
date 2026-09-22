@@ -1,0 +1,37 @@
+{
+  "state": {
+    "von": "kunde@example.de",
+    "betreff": "Doppelte Abbuchung und Kündigung",
+    "text": "Mir wurde die März-Rechnung zweimal abgebucht. Bitte erstatten Sie den doppelten Betrag heute, sonst kündige ich meinen Vertrag."
+  },
+  "questions": {
+    "abteilung": {
+      "type": "choice",
+      "instructions": "Welche Abteilung sollte diese Anfrage bearbeiten?",
+      "criteria": {
+        "abrechnung": "Rechnungen, Zahlungen und Erstattungen",
+        "technik": "Fehler, Ausfälle und technische Probleme",
+        "vertrieb": "Preise und neue Verträge",
+        "sonstiges": "Alles andere"
+      }
+    },
+    "dringlichkeit": {
+      "type": "score",
+      "instructions": "Wie dringend ist die Anfrage?",
+      "criteria": [
+        "nicht dringend",
+        "zeitnah bearbeiten",
+        "kritische Frist oder blockierendes Problem"
+      ]
+    },
+    "kuendigungsrisiko": {
+      "type": "noul",
+      "instructions": "Droht der Kunde ausdrücklich mit Kündigung oder Abwanderung?"
+    },
+    "erstattung_gefordert": {
+      "type": "noul",
+      "instructions": "Fordert der Kunde ausdrücklich eine Erstattung?"
+    }
+  }
+}
+

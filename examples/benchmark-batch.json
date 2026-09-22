@@ -1,0 +1,72 @@
+{
+  "state": {
+    "kanal": "E-Mail",
+    "kunde": "Firmenkunde",
+    "betreff": "Doppelte Abbuchung, App-Absturz und Kündigung",
+    "text": "Seit dem Update stürzt die mobile App beim Öffnen jeder Rechnung ab. Die März-Rechnung wurde außerdem doppelt abgebucht. Bitte erstatten Sie den Betrag bis morgen und schicken Sie mir einen Datenexport. Falls das nicht passiert, kündigen wir den Vertrag. Im Anhang steht unsere Kundennummer, aber keine Kreditkartennummer."
+  },
+  "questions": {
+    "abteilung": {
+      "type": "choice",
+      "instructions": "Welche Abteilung sollte federführend bearbeiten?",
+      "criteria": {
+        "abrechnung": "Rechnungen, Zahlungen und Erstattungen",
+        "technik": "Fehler, Abstürze und Ausfälle",
+        "datenschutz": "Datenauskunft und Löschung",
+        "vertrieb": "Verträge und Angebote"
+      }
+    },
+    "dringlichkeit": {
+      "type": "score",
+      "instructions": "Wie dringend ist die Bearbeitung?",
+      "criteria": ["normal", "zeitnah", "kritische Frist"]
+    },
+    "erstattung": {
+      "type": "noul",
+      "instructions": "Wird ausdrücklich eine Erstattung verlangt?"
+    },
+    "kuendigungsrisiko": {
+      "type": "noul",
+      "instructions": "Droht der Kunde mit einer Kündigung?"
+    },
+    "technischer_fehler": {
+      "type": "noul",
+      "instructions": "Beschreibt der Kunde einen reproduzierbaren technischen Fehler?"
+    },
+    "datenexport": {
+      "type": "noul",
+      "instructions": "Fordert der Kunde einen Export seiner Daten an?"
+    },
+    "zahlungsbezug": {
+      "type": "noul",
+      "instructions": "Bezieht sich die Anfrage auf eine Zahlung oder Abbuchung?"
+    },
+    "sensible_zahlungsdaten": {
+      "type": "noul",
+      "instructions": "Enthält der Text vollständige sensible Zahlungsdaten?"
+    },
+    "menschliche_pruefung": {
+      "type": "noul",
+      "instructions": "Sollte wegen mehrerer Anliegen ein Mensch die Antwort prüfen?"
+    },
+    "stimmung": {
+      "type": "choice",
+      "instructions": "Welche Stimmung dominiert?",
+      "criteria": {
+        "neutral": "sachlich und ruhig",
+        "frustriert": "deutlich unzufrieden",
+        "wuetend": "aggressiv oder stark verärgert"
+      }
+    },
+    "frist": {
+      "type": "score",
+      "instructions": "Wie konkret ist die genannte Frist?",
+      "criteria": ["keine Frist", "ungefähre Frist", "konkrete nahe Frist"]
+    },
+    "mehrfachanliegen": {
+      "type": "noul",
+      "instructions": "Enthält die Nachricht mehrere voneinander verschiedene Anliegen?"
+    }
+  }
+}
+

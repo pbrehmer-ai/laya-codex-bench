@@ -1,0 +1,11 @@
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+$env:HF_HOME = Join-Path $ProjectRoot '.cache\huggingface'
+$env:HF_HUB_CACHE = Join-Path $env:HF_HOME 'hub'
+$env:TRANSFORMERS_CACHE = Join-Path $env:HF_HOME 'transformers'
+$env:TORCH_HOME = Join-Path $ProjectRoot '.cache\torch'
+$env:UV_CACHE_DIR = Join-Path $ProjectRoot '.cache\uv'
+$env:UV_PYTHON_INSTALL_DIR = Join-Path $ProjectRoot '.python'
+$env:USE_TF = '0'
+$env:TOKENIZERS_PARALLELISM = 'false'
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING = '1'
+$ProjectPython = Join-Path $ProjectRoot '.venv\Scripts\python.exe'

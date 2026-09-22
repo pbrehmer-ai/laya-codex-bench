@@ -1,0 +1,17 @@
+.cache/
+.python/
+.tools/
+.venv/
+.runtime/
+models/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+runs/raw/
+runs/private/
+reports/generated/
+*.log
+.env
+.env.*
