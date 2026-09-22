@@ -129,4 +129,3 @@ def load_public_cases(
     }
 
     return dev, test, provenance
-
