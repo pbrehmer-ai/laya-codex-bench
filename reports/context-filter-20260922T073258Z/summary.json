@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "timestamp": "20260922T073258Z",
+    "repository": "https://github.com/NandhaKishorM/laya.git",
+    "commit": "573e5b62696ba441230cd6be71d593331b5d23af",
+    "codex_model": "gpt-5.6-luna",
+    "reasoning_effort": "low",
+    "candidate_files": 21,
+    "filter_mode": "serial-content",
+    "filter_input": "one request per file over path + first 800 characters",
+    "policy": {
+      "checkpoint": "typed-decisions",
+      "threshold": 0.5771,
+      "mean_f1": 0.27748538011695906,
+      "mean_recall": 1.0,
+      "selected_fraction": 0.6825396825396826
+    },
+    "laya_pid_before": 24284,
+    "laya_pid_after": 24284,
+    "laya_persistent": true
+  },
+  "tasks": 3,
+  "baseline_tokens": 228029,
+  "assisted_tokens": 176240,
+  "token_savings_percent": 22.711584929986973,
+  "mean_baseline_f1": 1.0,
+  "mean_assisted_f1": 1.0,
+  "mean_selection_recall": 1.0,
+  "median_baseline_ms": 9745.71,
+  "median_assisted_ms": 34524.47,
+  "mean_token_savings_ci95": [
+    10829.0,
+    26667.0
+  ],
+  "mean_f1_delta_ci95": [
+    0.0,
+    0.0
+  ]
+}

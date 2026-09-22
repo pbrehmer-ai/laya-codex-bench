@@ -1,60 +1,79 @@
 # Benchmark protocol
 
-## Research question
+## Research questions
 
-How do local Laya decisions affect Codex token usage, end-to-end latency, and decision quality in realistic typed-decision workflows?
+1. How many complete Codex calls and Codex tokens can a confidence-gated local Laya cascade avoid?
+2. Does the resulting pipeline remain within a predeclared decision-quality target?
+3. Can Laya reduce repository context before Codex without removing required evidence?
+4. What CPU, memory, and latency cost does the persistent local service add?
 
 ## Conditions
 
-1. `baseline`: Codex receives the complete decision packet and decides directly. It is explicitly prohibited from using Laya.
-2. `skill`: Codex receives the same semantic packet and must call `laya_predict` through the project-local, read-only MCP server. The installed `$laya-local-decisions` skill supplies the operating instructions.
-3. `preflight`: the harness calls Laya before Codex and sends Codex only the task title and typed decision results. This is a production routing condition, not a fixed-context ablation.
+### Component and cascade
 
-The baseline/skill pair measures in-agent orchestration overhead. Baseline/preflight measures the production architecture that can reduce Codex context.
+- `codex`: every test item receives one clean, ephemeral Codex structured-output run.
+- `laya`: the selected local checkpoint decides without Codex.
+- `cascade`: Laya is accepted only above a threshold chosen on the development split; all other cases reuse the same direct-Codex decision as the baseline.
 
-## Controlled variables
+The cascade is evaluated as a production policy. It does not start Codex merely to repeat an accepted Laya answer.
 
-- Pin Codex CLI version, Codex model, and reasoning effort.
-- Start every Codex run with `codex exec --ephemeral --json`.
-- Use the same output schema and sandbox for all conditions.
-- Randomize condition order with a recorded seed.
-- Use a warm, persistent Laya server for headline measurements.
-- Perform one unscored warm-up inference before scheduling runs, then record and compare the service PID before and after the suite.
-- Record Laya cold-start measurements separately.
-- Run conditions sequentially on the same machine.
-- Never tune prompts, labels, or thresholds on confirmatory test results.
+### Repository context
+
+- `full-context`: Codex receives every candidate file.
+- `laya-filtered`: a frozen Laya policy chooses files first; Codex receives complete content only for selected files.
+- `serial-content`, `serial-symbol`, and `batch-symbol` are explicit engineering ablations.
+
+## Frozen selection policy
+
+For every public-data suite:
+
+1. Evaluate English, multilingual, and typed-decisions checkpoints on the development subset.
+2. Select the checkpoint with highest development accuracy; use median inference latency only as a tie-breaker.
+3. Choose the threshold with greatest coverage that reaches 95% accepted-case development accuracy with at least three accepted cases.
+4. If no threshold qualifies, set it above 1.0 and route every test item to Codex.
+5. Do not revise checkpoint, prompt, or threshold after reading test outcomes.
+
+For repository filtering, development tasks select checkpoint and threshold with perfect development recall first, then F1 and selected fraction. Test-task recall and downstream Codex F1 are both reported.
+
+## Controls
+
+- Use public dataset IDs and a fixed seed.
+- Keep development and test indices disjoint.
+- Start Codex with `--ephemeral --json --ignore-user-config --ignore-rules` and a strict output schema.
+- Prohibit tools, skills, web search, and Laya inside the direct Codex classification prompt.
+- Record exact CLI model and reasoning effort.
+- Interleave conditions when independent calls are necessary.
+- Warm Laya before measurement and record service PID before and after.
+- Keep cold-start time separate.
 
 ## Token accounting
 
-Codex usage comes from the final `turn.completed` JSONL event:
+Codex tokens are read from `turn.completed.usage`. Primary totals are input plus output tokens. Cached-input and reasoning-output tokens remain separate columns. A locally computed Laya token count is not comparable and is not added.
 
-- `input_tokens`
-- `cached_input_tokens`
-- `output_tokens`
-- `reasoning_output_tokens`
+Cascade token savings are:
 
-Laya's tokenizer count is recorded separately and is never added to or subtracted from Codex tokens. The tokenizers have different vocabularies, and local Laya inference has no remote API-token charge.
+`1 - cascade Codex tokens / direct-Codex tokens`
 
-## Timing
-
-The harness measures wall-clock time around the complete `codex exec` process. The Laya service reports its own inference time. Results distinguish warm model inference from process/model cold start.
+Accepted local cases consume zero Codex tokens. Fallback cases consume the paired direct-Codex usage.
 
 ## Quality
 
-Every returned decision is matched against frozen accepted labels. Token or latency improvements are not considered beneficial if success or decision accuracy becomes materially worse.
-
-For future coding-task extensions, deterministic tests must be the primary quality signal. LLM-as-judge scoring may supplement but not replace executable checks.
+- Classification: exact accuracy by suite and overall.
+- Context filtering: selection recall and downstream file-list F1.
+- Report component, cascade, and baseline quality separately.
+- A token reduction is not considered useful if it violates the frozen quality target.
+- Confidence is a routing signal to validate, not proof of correctness.
 
 ## Statistics
 
-- Report totals, medians, p90 latency, and paired per-task deltas.
-- Report bootstrap 95% confidence intervals over paired task-level differences.
-- Keep pilot and confirmatory reports separate.
-- A public headline requires at least three repetitions on a frozen held-out set and a predeclared non-inferiority margin for quality.
+- Report totals, medians, p90 latency, avoided-call rate, and paired deltas.
+- Use a fixed-seed paired bootstrap with 5,000 samples for 95% intervals.
+- Keep retention controls separate from held-out suites.
+- The current reports are pilots. A confirmatory release requires at least three Codex repetitions and substantially more held-out tasks.
 
-## Publication rules
+## Publication and safety
 
-- Include hardware, OS, Codex CLI version, model, reasoning effort, dataset revision, repetitions, and seed.
-- Publish derived CSV/JSON and the prompts needed to reproduce the run.
-- Do not publish credentials, private customer data, raw reasoning, or unsanitized event streams.
-- Describe synthetic fixtures as realistic fixtures, not as production traffic.
+- Publish source dataset identities, fingerprints, indices, prompts, schemas, code, derived rows, and environment metadata.
+- Do not publish model reasoning events, credentials, customer data, local authentication, caches, or model weights.
+- Record failed runs instead of silently dropping them.
+- Never tune on the test split.

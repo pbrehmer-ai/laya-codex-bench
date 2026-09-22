@@ -1,0 +1,4 @@
+task_id,candidate_files,selected_files,selection_recall,baseline_f1,assisted_f1,baseline_input_tokens,assisted_input_tokens,baseline_total_tokens,assisted_total_tokens,baseline_ms,assisted_ms,laya_filter_ms
+model-download-loading,21,13,1.0,1.0,0.8,75904,53430,75929,53567,4846.62,19022.829999999998,13348.039999999999
+criteria-normalization,21,14,0.5,1.0,0.4,75901,51838,76025,52043,10115.71,28777.539999999997,14520.199999999997
+latency-benchmark,21,11,0.5,1.0,1.0,75904,47345,75986,47525,7251.44,26926.57,13150.52

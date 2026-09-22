@@ -25,8 +25,12 @@ class LayaClient:
 
     def ensure_started(self) -> dict[str, Any]:
         health = self.health()
-        if health and health.get("model_loaded"):
+        if health and health.get("model_loaded") and health.get("api_version") == 2:
             return health
+        if health:
+            raise RuntimeError(
+                "An outdated Laya service is already using the benchmark port; restart it once."
+            )
         runtime_dir = self.project_root / ".runtime"
         runtime_dir.mkdir(parents=True, exist_ok=True)
         python = self.project_root / ".venv" / "Scripts" / "python.exe"
@@ -52,18 +56,33 @@ class LayaClient:
         finally:
             stdout_handle.close()
             stderr_handle.close()
-        deadline = time.monotonic() + 120
+        deadline = time.monotonic() + 600
         while time.monotonic() < deadline:
             health = self.health()
-            if health and health.get("model_loaded"):
+            if health and health.get("model_loaded") and health.get("api_version") == 2:
                 (runtime_dir / "laya-server.pid").write_text(str(health["pid"]), encoding="ascii")
                 return health
             time.sleep(0.25)
-        raise TimeoutError("Laya did not report model_loaded=true within 120 seconds")
+        raise TimeoutError("Laya did not report model_loaded=true within 600 seconds")
 
-    def predict(self, state: Any, questions: dict[str, Any]) -> dict[str, Any]:
+    def predict(
+        self,
+        state: Any,
+        questions: dict[str, Any],
+        *,
+        model: str | None = None,
+        task: str | None = None,
+        lang: str | None = None,
+    ) -> dict[str, Any]:
         self.ensure_started()
-        data = json.dumps({"state": state, "questions": questions}, ensure_ascii=False).encode("utf-8")
+        payload: dict[str, Any] = {"state": state, "questions": questions}
+        if model is not None:
+            payload["model"] = model
+        if task is not None:
+            payload["task"] = task
+        if lang is not None:
+            payload["lang"] = lang
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(
             f"{self.base_url}/predict",
             data=data,

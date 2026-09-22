@@ -1,28 +1,36 @@
 import unittest
 
-from laya_codex_bench.metrics import build_summary, score_decisions
+from laya_codex_bench.cascade_benchmark import tune_threshold
+from laya_codex_bench.context_filter_benchmark import f1, recall
+from laya_codex_bench.public_cases import _stratified_indices
 
 
 class MetricTests(unittest.TestCase):
-    def test_decision_scoring(self) -> None:
-        final = {"decisions": [{"id": "a", "value": "YES"}, {"id": "b", "value": "2"}]}
-        correct, total = score_decisions(final, {"a": ["yes"], "b": ["1", "2"]})
-        self.assertEqual((2, 2), (correct, total))
-
-    def test_summary_pairs_by_task_and_repetition(self) -> None:
-        base = {
-            "task_id": "t1", "repetition": 1, "success": True, "correct": 1,
-            "total_decisions": 1, "input_tokens": 100, "output_tokens": 10, "elapsed_ms": 1000,
-        }
+    def test_threshold_uses_only_accurate_coverage(self) -> None:
         rows = [
-            {**base, "condition": "baseline"},
-            {**base, "condition": "preflight", "input_tokens": 60, "elapsed_ms": 500},
+            {"confidence": 0.99, "correct": True},
+            {"confidence": 0.90, "correct": True},
+            {"confidence": 0.80, "correct": True},
+            {"confidence": 0.70, "correct": False},
         ]
-        summary = build_summary(rows)
-        self.assertEqual(40, summary["comparisons"]["preflight"]["mean_input_tokens_saved"])
-        self.assertEqual(2, summary["comparisons"]["preflight"]["median_speedup"])
+        policy = tune_threshold(rows, 0.95)
+        self.assertEqual(3, policy["accepted"])
+        self.assertAlmostEqual(0.8, policy["threshold"])
+
+    def test_file_metrics(self) -> None:
+        expected = {"a.py", "b.py"}
+        self.assertEqual(1.0, recall({"a.py", "b.py", "c.py"}, expected))
+        self.assertAlmostEqual(0.8, f1({"a.py", "b.py", "c.py"}, expected))
+
+    def test_stratified_sampling_is_deterministic(self) -> None:
+        labels = [0, 0, 0, 1, 1, 1]
+        self.assertEqual(
+            _stratified_indices(labels, 4, 7),
+            _stratified_indices(labels, 4, 7),
+        )
+        selected = _stratified_indices(labels, 4, 7)
+        self.assertEqual({0, 1}, {labels[index] for index in selected})
 
 
 if __name__ == "__main__":
     unittest.main()
-

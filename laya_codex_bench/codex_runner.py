@@ -16,6 +16,8 @@ def run_codex(
     reasoning_effort: str,
     schema_path: Path,
     run_dir: Path,
+    ignore_user_config: bool = False,
+    ignore_rules: bool = False,
 ) -> dict[str, Any]:
     run_dir.mkdir(parents=True, exist_ok=True)
     events_path = run_dir / "events.jsonl"
@@ -30,6 +32,12 @@ def run_codex(
         "-",
         "--json",
         "--ephemeral",
+    ]
+    if ignore_user_config:
+        command.append("--ignore-user-config")
+    if ignore_rules:
+        command.append("--ignore-rules")
+    command.extend([
         "--model",
         model,
         "--sandbox",
@@ -44,7 +52,7 @@ def run_codex(
         f'model_reasoning_effort="{reasoning_effort}"',
         "-C",
         str(project_root),
-    ]
+    ])
     env = os.environ.copy()
     started_ns = time.perf_counter_ns()
     with prompt_path.open("r", encoding="utf-8") as prompt_file, events_path.open(

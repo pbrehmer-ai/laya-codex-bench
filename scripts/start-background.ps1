@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
 
 try {
     $Health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2
-    if ($Health.status -eq 'ok') {
+    if ($Health.status -eq 'ok' -and $Health.api_version -eq 2) {
         $Health.pid | Set-Content -Encoding ascii (Join-Path $RuntimeDir 'laya-server.pid')
         Write-Host "Laya is already running (PID $($Health.pid), model loaded: $($Health.model_loaded))."
         exit 0
@@ -35,7 +35,7 @@ $Process = Start-Process `
 
 $Process.Id | Set-Content -Encoding ascii (Join-Path $RuntimeDir 'laya-server.pid')
 
-$Deadline = (Get-Date).AddSeconds(90)
+$Deadline = (Get-Date).AddSeconds(600)
 do {
     if ($Process.HasExited) {
         throw "Laya exited during startup. See .runtime\laya-server.stderr.log"
@@ -43,7 +43,7 @@ do {
     Start-Sleep -Milliseconds 250
     try {
         $Health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2
-        if ($Health.status -eq 'ok') {
+        if ($Health.status -eq 'ok' -and $Health.api_version -eq 2) {
             $Health.pid | Set-Content -Encoding ascii (Join-Path $RuntimeDir 'laya-server.pid')
             Write-Host "Laya started in the background (PID $($Health.pid), model loaded: $($Health.model_loaded))."
             exit 0
@@ -53,4 +53,4 @@ do {
     }
 } while ((Get-Date) -lt $Deadline)
 
-throw "Laya did not become healthy within 90 seconds."
+throw "Laya did not become healthy within 600 seconds."

@@ -1,36 +1,49 @@
 # Laya × Codex Bench
 
-An open, reproducible benchmark for measuring whether a local [Laya](https://huggingface.co/convaiinnovations/laya) decision model reduces Codex token usage and end-to-end latency without hiding quality regressions.
+An open, reproducible benchmark for testing where a persistent local [Laya](https://huggingface.co/convaiinnovations/laya) decision service actually reduces Codex calls, tokens, and latency without hiding quality regressions.
 
-This repository measures three concrete architectures:
+The benchmark deliberately separates three architectures:
 
-1. **Direct Codex (`baseline`)** — Codex makes typed decisions itself.
-2. **Laya as a Codex skill (`skill`)** — Codex invokes the local model through the read-only project MCP tool.
-3. **Laya before Codex (`preflight`)** — Laya runs first and passes compact typed decisions to Codex.
+1. **Laya only** — a typed decision is completed locally; Codex is never started.
+2. **Confidence-gated cascade** — Laya handles development-calibrated high-confidence cases and sends every other case to Codex.
+3. **Context filter** — Laya selects relevant repository files before a clean Codex run.
 
-The benchmark records Codex's own `turn.completed.usage` fields from `codex exec --json`; it does not estimate tokens from text length. Laya tokenizer counts stay separate because the tokenizers are not comparable.
+Calling Laya from inside an already-running Codex turn is supported through MCP, but is an optional overhead ablation rather than the headline architecture.
 
-> **Status:** experimental pilot harness. Pilot results validate the measurement pipeline but are not a universal performance claim.
+## Current public-data results
 
-## Published pilot result
+The main 40-case cascade pilot used disjoint development and test subsets from AG News and Deepset Prompt Injections. All three Laya checkpoints were warmed in one persistent process before selection. Codex used `gpt-5.6-luna` at low reasoning effort.
 
-The first 12-task, one-repetition pilot found **no production win under this setup**:
+| Metric | Direct Codex | Laya-only | Laya→Codex cascade |
+|---|---:|---:|---:|
+| Accuracy | 75.0% | 80.0% | 80.0% |
+| Codex calls | 40 | 0 | 23 |
+| Codex tokens | 496,584 | 0 | 284,869 |
+| Median end-to-end latency | 4,760 ms | 422 ms | 4,124 ms |
 
-- the in-agent Laya skill used 51,669.5 more total Codex tokens per paired task at the median and was about 3.2× slower than direct Codex;
-- external Laya preflight saved 113.5 total Codex tokens per paired task at the median, but had no demonstrated speed advantage and reduced exact decision accuracy from 96.3% to 59.3%;
-- Laya remained warm in one process for the complete run (same PID before and after); its warm-up inference took 331.52 ms.
+The cascade avoided **42.5% of Codex calls** and **42.6% of Codex tokens**. Its observed accuracy was 5 percentage points higher; the paired bootstrap 95% interval was 0.0 to 12.5 points, so this pilot does not establish a general quality improvement.
 
-These numbers are an integration pilot, not a general claim about either model. Read the complete [pilot report](reports/pilot-2026-09-22/RESULTS.md), including confidence intervals and methodology, before citing them.
+Mean end-to-end latency fell **34.2%** (4,893 to 3,221 ms), and the aggregate median fell **13.4%**. The paired median speedup was only **0.954x** because the 57.5% fallback cases first pay Laya latency and then still call Codex; the much larger 4.875x mean is driven by locally accepted cases. Both figures are reported to avoid presenting one favorable latency statistic in isolation.
 
-The separate [resource report](reports/resource-usage-2026-09-22.md) records the warm service's RAM, CPU, and inference-time measurements on the reference machine.
+The result is heterogeneous: AG News, which upstream discloses as training-overlap retention data, saved 85%; the held-out prompt-injection suite met no 95%-accuracy development threshold and therefore correctly fell back to Codex for every test case.
 
-## Why this benchmark exists
+Read the [complete cascade report](reports/cascade-20260922T071229Z/RESULTS.md) and the [combined findings](reports/2026-09-22-findings.md) before citing a number.
 
-System-1 decision models are often described as cheaper and faster than generative models, but that does not automatically mean they save tokens inside an agent workflow. A tool call can add orchestration overhead. A preflight router can save much more by avoiding an agent run or shrinking its context. This project measures both cases rather than assuming either outcome.
+For the recommended multilingual-only service, the measured model/runtime increment was **1.93 GB private memory / 1.63 GB working set**, idle CPU was **0%**, and the 1/4/12-question probes took **112/532/2,408 ms**. See the [process-only resource report](reports/resource-usage-2026-09-22.md).
+
+## Context-filter findings
+
+On three held-out repository-navigation tasks over 21 candidate files:
+
+- conservative full-content filtering saved **22.7% Codex tokens** while preserving mean Codex F1 at **1.000**, but was slower on this CPU;
+- a compact serial symbol index saved **32.8%**, but mean Codex F1 fell to **0.733**;
+- a single 21-question symbol batch saved **61.3%**, but mean Codex F1 fell to **0.667** and CPU latency increased sharply.
+
+These ablations demonstrate the token mechanism and its cost: aggressive filtering can reproduce large token reductions, but those reductions are not useful when relevant files are dropped. The conservative mode remains the default.
 
 ## Quick start on Windows
 
-The project keeps Python, packages, model files, and caches inside the repository directory.
+Everything except the global Codex skill stays inside this repository.
 
 ```powershell
 .\scripts\setup.ps1
@@ -38,77 +51,70 @@ The project keeps Python, packages, model files, and caches inside the repositor
 .\scripts\smoke-test.ps1
 ```
 
-The deployed checkpoint is `convaiinnovations/laya/multilingual` on CPU. The first load takes roughly 20–30 seconds on the reference machine; warm predictions are much faster.
-
-Validate the public pilot dataset and unit tests:
+The normal service keeps only the multilingual checkpoint warm. For benchmark checkpoint selection, start all three once:
 
 ```powershell
-.\.venv\Scripts\python.exe -m laya_codex_bench validate
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\scripts\start-benchmark-service.ps1
 ```
 
-Run a small benchmark:
+Do not run both commands on the same port. The scripts reuse a healthy service and never start one model per request.
+
+Run the public cascade benchmark:
 
 ```powershell
-.\.venv\Scripts\python.exe -m laya_codex_bench run `
-  --dataset datasets/pilot.jsonl `
-  --model gpt-5.6-terra `
-  --reasoning-effort medium `
-  --repetitions 1
+.\.venv\Scripts\python.exe -m laya_codex_bench `
+  --dev-per-suite 40 `
+  --test-per-suite 20 `
+  --target-accuracy 0.95 `
+  --model gpt-5.6-luna `
+  --reasoning-effort low
 ```
 
-Every Codex run is new and ephemeral. Conditions are shuffled with a recorded seed. Raw event streams stay ignored locally; derived CSV, JSON, and Markdown reports can be reviewed before publication.
-
-## Measurements
-
-For each run the harness records:
-
-- Codex input, cached input, output, and reasoning-output tokens;
-- complete `codex exec` wall-clock latency;
-- Laya inference latency where applicable;
-- command/tool use and whether Codex actually invoked Laya;
-- exact-match decision accuracy against frozen labels;
-- CLI/model/reasoning configuration and local hardware metadata.
-
-Read [BENCHMARK_PROTOCOL.md](BENCHMARK_PROTOCOL.md) before interpreting results. The generated report explicitly distinguishes the fixed-input skill comparison from the production-style preflight comparison.
-
-## Dataset
-
-`datasets/pilot.jsonl` contains 12 original, manually labelled German and English fixtures across support, CI, security, privacy, sales, billing, account recovery, and moderation. They are realistic synthetic fixtures, not customer data and not scraped benchmark answers.
-
-The pilot is for harness validation. A confirmatory release needs a larger frozen held-out dataset, at least three repetitions, confidence intervals, and a predeclared quality non-inferiority margin. See [datasets/DATASET.md](datasets/DATASET.md).
-
-## Local API
-
-Start or reuse the hidden persistent service:
+Run the conservative repository-context benchmark:
 
 ```powershell
-.\scripts\start-background.ps1
-.\scripts\api-predict.ps1 -InputFile .\examples\ticket-de.json
+.\.venv\Scripts\python.exe -m laya_codex_bench.context_filter_benchmark `
+  --filter-mode serial-content `
+  --model gpt-5.6-luna `
+  --reasoning-effort low
 ```
 
-Endpoints:
+The other explicit ablations are `serial-symbol` and `batch-symbol`.
+
+## What is measured
+
+Codex usage comes directly from `codex exec --json` `turn.completed.usage` events:
+
+- input and cached-input tokens;
+- output and reasoning-output tokens;
+- complete process wall time;
+- structured-output success.
+
+Laya reports its own inference time. Its tokenizer counts are never added to Codex token counts. The service PID is captured before and after each suite to prove that the same loaded process remained resident.
+
+The public reports contain derived CSV/JSON only. Raw Codex events, prompts, local paths, model weights, caches, and authentication stay ignored locally.
+
+## Important limitations
+
+- These are integration pilots, not universal model rankings.
+- AG News is a retention control, not held-out generalization.
+- Prompt-injection quality is reported separately and is not hidden by the aggregate.
+- Thresholds and checkpoint choice come only from development subsets.
+- The i3-12100 CPU is not comparable to upstream Tesla T4 latency figures.
+- Preloading all three checkpoints caused severe Windows memory commitment and paging; it is for checkpoint selection, not the recommended always-on configuration.
+- A confirmatory claim needs more held-out tasks, at least three Codex repetitions, and a predeclared quality non-inferiority margin.
+
+See [BENCHMARK_PROTOCOL.md](BENCHMARK_PROTOCOL.md) for the frozen protocol and [datasets/DATASET.md](datasets/DATASET.md) for provenance.
+
+## Local API and Codex skill
+
+The localhost service exposes:
 
 - `GET http://127.0.0.1:8765/health`
 - `POST http://127.0.0.1:8765/predict`
 
-The server binds only to localhost. Runtime logs and PID files are kept in the ignored `.runtime` directory.
-
-The committed `.codex/config.toml` exposes `laya_predict` to Codex. It reuses the same localhost service and does not load a separate model for each call.
-
-## Reproducibility and limitations
-
-- Laya is a beta model. Its shipped probabilities require domain calibration before production automation.
-- `laya-multilingual` has a finite context and option-token budget; large label sets are outside this pilot's scope.
-- Codex is stochastic and remote latency varies. Report medians, paired differences, repetitions, and confidence intervals.
-- Prompt caching is reported separately through `cached_input_tokens`.
-- Preflight receives less Codex context by design and must not be described as a fixed-context model ablation.
-- Results apply to the pinned software versions, model, reasoning effort, hardware, dataset, and warm/cold state shown in the report.
-
-## Repository safety
-
-Never commit `.runtime`, model weights, virtual environments, Hugging Face caches, API keys, Codex authentication, customer content, or unsanitized reasoning traces. Public CI performs only offline validation and unit tests.
+The committed `.codex/config.toml` exposes the read-only `laya_predict` MCP tool. The personal `$laya-local-decisions` skill prefers MCP when available and otherwise calls the localhost API. Both paths reuse the existing process.
 
 ## License
 
-Apache-2.0. Laya is developed by Convai Innovations and distributed separately under Apache-2.0. This repository does not redistribute Laya model weights.
+Apache-2.0. Laya is developed by Convai Innovations and distributed separately under Apache-2.0. This repository does not redistribute model weights or public benchmark datasets.

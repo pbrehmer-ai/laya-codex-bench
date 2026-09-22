@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "timestamp": "20260922T071229Z",
+    "seed": 20260922,
+    "dev_per_suite": 40,
+    "test_per_suite": 20,
+    "target_accuracy": 0.95,
+    "codex_model": "gpt-5.6-luna",
+    "reasoning_effort": "low",
+    "codex_version": "codex-cli 0.155.0-alpha.9.2",
+    "os": "Windows-11-10.0.26200-SP0",
+    "cpu": "Intel64 Family 6 Model 151 Stepping 5, GenuineIntel",
+    "laya_pid_before": 24284,
+    "laya_pid_after": 24284,
+    "laya_persistent": true,
+    "loaded_models": [
+      "multilingual",
+      "typed-decisions",
+      "english"
+    ],
+    "provenance": {
+      "ag_news_retention": {
+        "dataset": "fancyzhx/ag_news",
+        "split": "test",
+        "fingerprint": "0ebcc57b6aea2fc9",
+        "training_overlap": "Disclosed by the upstream Laya benchmark; this is a retention control."
+      },
+      "prompt_injections_heldout": {
+        "dataset": "deepset/prompt-injections",
+        "split": "test",
+        "fingerprint": "84d77165540a9ca9",
+        "training_overlap": "Reported held out by the upstream Laya benchmark."
+      }
+    },
+    "dev_scores": {
+      "ag_news_retention": {
+        "english": {
+          "accuracy": 0.925,
+          "median_inference_ms": 473.69500000000005
+        },
+        "multilingual": {
+          "accuracy": 0.9,
+          "median_inference_ms": 175.47500000000002
+        },
+        "typed-decisions": {
+          "accuracy": 0.925,
+          "median_inference_ms": 469.44
+        }
+      },
+      "prompt_injections_heldout": {
+        "english": {
+          "accuracy": 0.75,
+          "median_inference_ms": 274.645
+        },
+        "multilingual": {
+          "accuracy": 0.625,
+          "median_inference_ms": 103.785
+        },
+        "typed-decisions": {
+          "accuracy": 0.75,
+          "median_inference_ms": 279.065
+        }
+      }
+    },
+    "policies": {
+      "ag_news_retention": {
+        "threshold": 0.3223,
+        "accepted": 35,
+        "coverage": 0.875,
+        "accuracy": 0.9714285714285714,
+        "target_accuracy": 0.95,
+        "reason": "selected on development split only",
+        "checkpoint": "typed-decisions"
+      },
+      "prompt_injections_heldout": {
+        "threshold": 1.01,
+        "accepted": 0,
+        "coverage": 0.0,
+        "accuracy": null,
+        "target_accuracy": 0.95,
+        "reason": "No development threshold met the target accuracy with at least three cases.",
+        "checkpoint": "english"
+      }
+    }
+  },
+  "summaries": {
+    "overall": {
+      "codex": {
+        "cases": 40,
+        "correct": 30,
+        "accuracy": 0.75,
+        "codex_calls": 40,
+        "codex_tokens": 496584,
+        "mean_latency_ms": 4893.068,
+        "median_latency_ms": 4759.6900000000005,
+        "p90_latency_ms": 6239.155
+      },
+      "laya": {
+        "cases": 40,
+        "correct": 32,
+        "accuracy": 0.8,
+        "codex_calls": 0,
+        "codex_tokens": 0,
+        "mean_latency_ms": 409.036,
+        "median_latency_ms": 422.065,
+        "p90_latency_ms": 559.148
+      },
+      "cascade": {
+        "cases": 40,
+        "correct": 32,
+        "accuracy": 0.8,
+        "codex_calls": 23,
+        "codex_tokens": 284869,
+        "mean_latency_ms": 3221.478,
+        "median_latency_ms": 4124.035,
+        "p90_latency_ms": 5833.0560000000005,
+        "token_savings_percent": 42.63427738308121,
+        "avoided_codex_calls_percent": 42.50000000000001
+      }
+    },
+    "ag_news_retention": {
+      "codex": {
+        "cases": 20,
+        "correct": 14,
+        "accuracy": 0.7,
+        "codex_calls": 20,
+        "codex_tokens": 249128,
+        "median_latency_ms": 4786.99,
+        "p90_latency_ms": 5577.617
+      },
+      "laya": {
+        "cases": 20,
+        "correct": 18,
+        "accuracy": 0.9,
+        "codex_calls": 0,
+        "codex_tokens": 0,
+        "median_latency_ms": 474.435,
+        "p90_latency_ms": 585.0860000000002
+      },
+      "cascade": {
+        "cases": 20,
+        "correct": 16,
+        "accuracy": 0.8,
+        "codex_calls": 3,
+        "codex_tokens": 37413,
+        "median_latency_ms": 488.635,
+        "p90_latency_ms": 4218.599000000002,
+        "token_savings_percent": 84.98241867634309,
+        "avoided_codex_calls_percent": 85.0
+      }
+    },
+    "prompt_injections_heldout": {
+      "codex": {
+        "cases": 20,
+        "correct": 16,
+        "accuracy": 0.8,
+        "codex_calls": 20,
+        "codex_tokens": 247456,
+        "median_latency_ms": 4531.195,
+        "p90_latency_ms": 6341.069
+      },
+      "laya": {
+        "cases": 20,
+        "correct": 14,
+        "accuracy": 0.7,
+        "codex_calls": 0,
+        "codex_tokens": 0,
+        "median_latency_ms": 283.08000000000004,
+        "p90_latency_ms": 450.571
+      },
+      "cascade": {
+        "cases": 20,
+        "correct": 16,
+        "accuracy": 0.8,
+        "codex_calls": 20,
+        "codex_tokens": 247456,
+        "median_latency_ms": 4907.475,
+        "p90_latency_ms": 6691.938999999999,
+        "token_savings_percent": 0.0,
+        "avoided_codex_calls_percent": 0.0
+      }
+    }
+  },
+  "paired": {
+    "mean_codex_tokens_saved_ci95": [
+      3423.5743749999997,
+      7166.10375
+    ],
+    "mean_speedup": 4.87537785192459,
+    "median_speedup": 0.953890119326652,
+    "mean_speedup_ci95": [
+      3.4319072324697357,
+      6.380725308077968
+    ],
+    "mean_accuracy_delta_ci95": [
+      0.0,
+      0.125
+    ]
+  }
+}

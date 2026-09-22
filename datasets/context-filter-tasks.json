@@ -1,0 +1,43 @@
+{
+  "repository": "https://github.com/NandhaKishorM/laya.git",
+  "commit": "573e5b62696ba441230cd6be71d593331b5d23af",
+  "candidate_globs": ["laya/*.py", "tests/*.py", "research/scripts/*.py"],
+  "tasks": [
+    {
+      "id": "router-language-selection",
+      "split": "dev",
+      "question": "Which files implement and directly test automatic language and script based checkpoint routing?",
+      "expected_files": ["laya/router.py", "laya/lang.py", "tests/test_router.py"]
+    },
+    {
+      "id": "shortlist-options",
+      "split": "dev",
+      "question": "Which files implement and directly test hierarchical shortlisting for large choice option sets?",
+      "expected_files": ["laya/shortlist.py", "tests/test_shortlist.py"]
+    },
+    {
+      "id": "email-utilities",
+      "split": "dev",
+      "question": "Which files implement and directly test the email state and email decision helpers?",
+      "expected_files": ["laya/email.py", "tests/test_email.py"]
+    },
+    {
+      "id": "model-download-loading",
+      "split": "test",
+      "question": "Which files implement checkpoint download and model loading, and directly test download behavior?",
+      "expected_files": ["laya/agent.py", "tests/test_download.py"]
+    },
+    {
+      "id": "criteria-normalization",
+      "split": "test",
+      "question": "Which files implement and directly test normalization of structured decision criteria?",
+      "expected_files": ["laya/common.py", "tests/test_criteria.py"]
+    },
+    {
+      "id": "latency-benchmark",
+      "split": "test",
+      "question": "Which research files contain the dedicated latency benchmark and its shared local benchmark helpers?",
+      "expected_files": ["research/scripts/bench_latency.py", "research/scripts/bench_local.py"]
+    }
+  ]
+}

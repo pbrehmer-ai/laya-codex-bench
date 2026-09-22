@@ -1,15 +1,29 @@
-# Pilot dataset
+# Dataset provenance
 
-The pilot dataset contains 12 original, manually labelled decision scenarios across support, CI, security, privacy, sales, billing, account recovery, and moderation. They are realistic fixtures, not copied customer records or scraped GitHub issues.
+No previous synthetic pilot data remains in this repository.
 
-Each JSONL row contains:
+## Public classification suites
 
-- a stable task id and category;
-- a state document in German or English;
-- typed Laya questions (`choice`, `score`, or `noul`);
-- one or more accepted ground-truth values for every question.
+The cascade harness downloads datasets into the ignored project-local Hugging Face cache.
 
-The pilot is deliberately small. It verifies the harness and reveals obvious quality or orchestration failures. It is not large enough for a general claim about Codex or Laya. A confirmatory benchmark must freeze a larger held-out test set before collecting headline results.
+| Suite | Hugging Face dataset | Source split | Role |
+|---|---|---|---|
+| `ag_news_retention` | `fancyzhx/ag_news` | `test` | Retention control; upstream Laya reports training overlap |
+| `prompt_injections_heldout` | `deepset/prompt-injections` | `test` | Held-out generalization suite according to upstream Laya benchmark documentation |
 
-Ground truth was assigned from explicit textual evidence. Ambiguous values should be represented by multiple accepted values rather than retroactively changing labels after seeing model output.
+Indices are stratified deterministically with seed `20260922`, then divided into disjoint development and test subsets. Dataset fingerprints are written into each report. Source texts are not copied into this repository.
 
+## Repository-context tasks
+
+`context-filter-tasks.json` contains six manually labelled semantic file-selection tasks against:
+
+- repository: `https://github.com/NandhaKishorM/laya.git`
+- commit: `573e5b62696ba441230cd6be71d593331b5d23af`
+
+Three tasks are development tasks and three are held-out test tasks. The candidate set is generated from pinned Python source, tests, and research scripts. Expected paths are public repository paths, not private code.
+
+## Limitations
+
+- Forty classification test cases and three context-filter test tasks are sufficient for integration pilots, not universal rankings.
+- AG News is intentionally disclosed as an upper-bound retention control.
+- The manually labelled repository tasks should be expanded and independently reviewed before a confirmatory release.

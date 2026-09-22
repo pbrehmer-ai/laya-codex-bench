@@ -25,36 +25,59 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 MODEL_ID = "convaiinnovations/laya"
-DEFAULT_SUBFOLDER = "multilingual"
+DEFAULT_PRELOAD_MODELS = ("multilingual",)
 MODEL_ROOT = ROOT / "models" / "laya"
 
-_agent: Any | None = None
+_router: Any | None = None
 _agent_lock = threading.Lock()
 _predict_lock = threading.Lock()
 _loaded_at: float | None = None
 
 
-def load_agent() -> Any:
-    """Load the German-capable checkpoint once and retain it for this process."""
-    global _agent, _loaded_at
-    if _agent is None:
+def load_router() -> Any:
+    """Preload the configured checkpoints once and retain them for this process."""
+    global _router, _loaded_at
+    if _router is None:
         with _agent_lock:
-            if _agent is None:
+            if _router is None:
                 import laya
                 from huggingface_hub import snapshot_download
 
                 started = time.perf_counter()
-                weights = MODEL_ROOT / DEFAULT_SUBFOLDER / "model.safetensors"
-                if not weights.exists():
-                    MODEL_ROOT.mkdir(parents=True, exist_ok=True)
-                    snapshot_download(
-                        repo_id=MODEL_ID,
-                        allow_patterns=[f"{DEFAULT_SUBFOLDER}/*"],
-                        local_dir=MODEL_ROOT,
-                    )
-                _agent = laya.load(str(MODEL_ROOT), subfolder=DEFAULT_SUBFOLDER, device="cpu")
+                preload_models = tuple(
+                    item.strip()
+                    for item in os.environ.get(
+                        "LAYA_PRELOAD_MODELS", ",".join(DEFAULT_PRELOAD_MODELS)
+                    ).split(",")
+                    if item.strip()
+                )
+                layouts = {
+                    "english": (MODEL_ROOT / "english", None),
+                    "multilingual": (MODEL_ROOT / "multilingual", "multilingual"),
+                    "typed-decisions": (MODEL_ROOT / "typed-decisions", "typed-decisions"),
+                }
+                unknown = sorted(set(preload_models) - set(layouts))
+                if unknown:
+                    raise ValueError(f"Unknown Laya checkpoint(s): {', '.join(unknown)}")
+                required = ["model.safetensors", "rl_agent_config.json", "encoder/*", "tokenizer/*"]
+                for name in preload_models:
+                    directory, hub_subfolder = layouts[name]
+                    if not (directory / "model.safetensors").exists():
+                        directory.mkdir(parents=True, exist_ok=True)
+                        patterns = required if hub_subfolder is None else [f"{hub_subfolder}/{item}" for item in required]
+                        snapshot_download(
+                            repo_id=MODEL_ID,
+                            allow_patterns=patterns,
+                            local_dir=MODEL_ROOT if hub_subfolder else directory,
+                        )
+                _router = laya.Router(
+                    models={name: str(directory) for name, (directory, _) in layouts.items()},
+                    device="cpu",
+                    max_loaded=max(1, len(preload_models)),
+                )
+                _router.preload(list(preload_models))
                 _loaded_at = time.perf_counter() - started
-    return _agent
+    return _router
 
 
 def validate_request(payload: Any) -> tuple[Any, dict[str, dict[str, Any]]]:
@@ -70,15 +93,21 @@ def validate_request(payload: Any) -> tuple[Any, dict[str, dict[str, Any]]]:
 
 def predict(payload: Any) -> dict[str, Any]:
     state, questions = validate_request(payload)
-    agent = load_agent()
+    router = load_router()
     started = time.perf_counter()
     with _predict_lock:
-        result = agent.predict(state, questions)
+        result = router.predict(
+            state,
+            questions,
+            model=payload.get("model"),
+            task=payload.get("task"),
+            lang=payload.get("lang"),
+        )
     elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
     return {
         **result,
         "deployment": {
-            "checkpoint": f"{MODEL_ID}/{DEFAULT_SUBFOLDER}",
+            "checkpoint": result.get("routing", {}).get("repo", MODEL_ID),
             "device": "cpu",
             "inference_ms": elapsed_ms,
             "initial_load_seconds": round(_loaded_at or 0.0, 2),
@@ -95,7 +124,7 @@ def read_payload(input_path: str | None) -> Any:
 
 
 class LayaHandler(BaseHTTPRequestHandler):
-    server_version = "LayaLocal/0.1"
+    server_version = "LayaLocal/0.2"
 
     def _send_json(self, status: int, value: Any) -> None:
         body = json.dumps(value, ensure_ascii=False, indent=2).encode("utf-8")
@@ -111,8 +140,10 @@ class LayaHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 {
                     "status": "ok",
-                    "model_loaded": _agent is not None,
-                    "checkpoint": f"{MODEL_ID}/{DEFAULT_SUBFOLDER}",
+                    "api_version": 2,
+                    "model_loaded": _router is not None,
+                    "checkpoint": MODEL_ID,
+                    "loaded_models": list(_router.loaded) if _router is not None else [],
                     "device": "cpu",
                     "pid": os.getpid(),
                     "initial_load_seconds": round(_loaded_at or 0.0, 2),
@@ -152,8 +183,8 @@ def command_predict(args: argparse.Namespace) -> int:
 
 def command_serve(args: argparse.Namespace) -> int:
     if not args.lazy:
-        print("Loading Laya multilingual checkpoint on CPU...", flush=True)
-        load_agent()
+        print("Preloading configured Laya checkpoints on CPU...", flush=True)
+        load_router()
     server = ThreadingHTTPServer((args.host, args.port), LayaHandler)
     print(f"Laya listening on http://{args.host}:{args.port}", flush=True)
     print("Endpoints: GET /health, POST /predict", flush=True)
