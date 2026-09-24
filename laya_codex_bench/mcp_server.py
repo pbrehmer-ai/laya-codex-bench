@@ -24,7 +24,6 @@ mcp = FastMCP("laya-local-decisions")
 def laya_predict(state: Any, questions: dict[str, Any]) -> dict[str, Any]:
     """Classify typed questions about state with the already-running local Laya model."""
     client = LayaClient(ROOT)
-    client.ensure_started()
     return client.predict(state, questions)
 
 
