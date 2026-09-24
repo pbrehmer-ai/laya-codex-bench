@@ -115,6 +115,32 @@ The localhost service exposes:
 
 The committed `.codex/config.toml` exposes the read-only `laya_predict` MCP tool. The personal `$laya-local-decisions` skill prefers MCP when available and otherwise calls the localhost API. Both paths reuse the existing process.
 
+## Use the existing Windows service from WSL
+
+In WSL, Linux `127.0.0.1` is not the Windows loopback listener. The client detects WSL and uses `powershell.exe` to send `/health` and `/predict` requests to the existing Windows `127.0.0.1` service. This does not change the service bind address, firewall, or WSL networking settings. The WSL client requires a healthy API v2 service with `multilingual` already loaded; it will not start the service or load another model. Native Windows continues to use its existing local configuration.
+
+Create a small WSL-only Python environment for the MCP server:
+
+```bash
+python3.12 -m venv "$HOME/.venvs/laya-mcp"
+"$HOME/.venvs/laya-mcp/bin/python" -m pip install 'mcp>=1,<2'
+```
+
+The committed `.codex/config.toml` keeps its native-Windows Python path. For Codex CLI in WSL, add this function to `~/.bashrc`; the CLI overrides take precedence over the trusted project's `.codex/config.toml`:
+
+```bash
+codex-laya() {
+  codex \
+    --config "mcp_servers.laya.command=\"$HOME/.venvs/laya-mcp/bin/python\"" \
+    --config 'mcp_servers.laya.args=["-m","laya_codex_bench.mcp_server"]' \
+    --config "mcp_servers.laya.cwd=\"$PWD\""
+}
+```
+
+Reload `~/.bashrc` with `source ~/.bashrc` or open a new WSL shell. From the Laya repository root, run `codex-laya`. Start and verify the multilingual service separately on Windows first. If it is unavailable or multilingual is not already loaded, the WSL client stops with an error instead of starting or changing the service. This client route has not been benchmarked and makes no latency or model-quality claims.
+
+References: [Microsoft WSL networking](https://learn.microsoft.com/en-us/windows/wsl/networking), [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp), and [Codex configuration precedence](https://learn.chatgpt.com/docs/config-file/config-basic#configuration-precedence).
+
 ## License
 
 Apache-2.0. Laya is developed by Convai Innovations and distributed separately under Apache-2.0. This repository does not redistribute model weights or public benchmark datasets.
